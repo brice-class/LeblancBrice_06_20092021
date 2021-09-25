@@ -2,15 +2,17 @@ const Thing = require('../models/Thing')
 const fs = require('fs');
 
 exports.createThing = (req, res, next) => {
-  const thingObject = JSON.parse(req.body.thing);
+  const thingObject = JSON.parse(req.body.sauce);
+  console.log(thingObject)
   delete thingObject._id;
   const thing = new Thing({
     ...thingObject,
     imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
   });
+  console.log(thing)
   thing.save()
     .then(() => res.status(201).json({ message: 'Objet enregistré !'}))
-    .catch(error => res.status(400).json({ error }));
+    .catch(error => res.status(400).json({ messsage: error.message }));
 };
 
 exports.modifyThing = (req, res, next) => {
