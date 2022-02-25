@@ -1,6 +1,6 @@
 const Sauce = require('../models/Sauce')
 const fs = require('fs');
-
+const jwt = require('jsonwebtoken');
 
 
 exports.createSauce = (req, res, next) => {
@@ -20,6 +20,15 @@ exports.createSauce = (req, res, next) => {
 };
 
 exports.modifySauce = (req, res, next) => {
+  const token = req.headers.authorization.split(' ')[1];
+  const decodedToken = jwt.verify(token, process.env.SIGNATURE);
+  const userId = decodedToken.userId;
+
+  Sauce.findOne({ _id: req.params.id })
+    .then(sauce => {
+
+       if (sauce.userId ==  userId) {
+
   const sauceObject = req.file ?
     {
       ...JSON.parse(req.body.sauce),
@@ -28,20 +37,35 @@ exports.modifySauce = (req, res, next) => {
   Sauce.updateOne({ _id: req.params.id }, { ...sauceObject, _id: req.params.id })
     .then(() => res.status(200).json({ message: 'Sauce modifié !'}))
     .catch(error => res.status(400).json({ message: error.message }));
+  } else {
+    return res.status(403).json({message: "not authorised"});
+}
+})
+.catch(error => res.status(500).json({ message: error.message }));
 };
 
 exports.deleteSauce = (req, res, next) => {
+  const token = req.headers.authorization.split(' ')[1];
+  const decodedToken = jwt.verify(token, process.env.SIGNATURE);
+  const userId = decodedToken.userId;
+
   Sauce.findOne({ _id: req.params.id })
     .then(sauce => {
-      // recupere l'identifiant de l'utilisateur qui a créé la sauce et le comparer a l'identifiant de l'utilisateur dans le body de la sauce
+
+       if (sauce.userId ==  userId) {
+        
+      
       const filename = sauce.imageUrl.split('/images/')[1];
       fs.unlink(`images/${filename}`, () => {
         Sauce.deleteOne({ _id: req.params.id })
           .then(() => res.status(200).json({ message: 'Sauce supprimé !'}))
           .catch(error => res.status(400).json({ message: error.message  }));
       });
+    } else {
+        return res.status(403).json({message: "not authorised"});
+    }
     })
-    .catch(error => res.status(500).json({ error }));
+    .catch(error => res.status(500).json({ message : error.message }));
 };
   
   exports.getOneSauce = (req, res, next) => {
@@ -92,7 +116,7 @@ exports.deleteSauce = (req, res, next) => {
           default:
             return res.status(400).json({ error: "Valeur de like invalide !" });
         }
-        //Affichage  du nombre de loke et de dislike
+        //Affichage  du nombre de like et de dislike
         sauce.likes = sauce.usersLiked.length;
         sauce.dislikes = sauce.usersDisliked.length;
         sauce
