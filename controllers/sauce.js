@@ -1,84 +1,78 @@
 const Sauce = require('../models/Sauce')
 const fs = require('fs');
-const jwt = require('jsonwebtoken');
-
 
 exports.createSauce = (req, res, next) => {
   const sauceObject = JSON.parse(req.body.sauce);
   sauceObject.likes = 0;
   sauceObject.dislikes = 0;
-  console.log(sauceObject)
   delete sauceObject._id;
   const sauce = new Sauce({
     ...sauceObject,
     imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
   });
-  console.log(sauce)
   sauce.save()
     .then(() => res.status(201).json({ message: 'Sauce enregistré !'}))
-    .catch(error => res.status(400).json({ messsage: error.message }));
+    .catch(error => res.status(400).json(error));
 };
 
 exports.modifySauce = (req, res, next) => {
-  const token = req.headers.authorization.split(' ')[1];
-  const decodedToken = jwt.verify(token, process.env.SIGNATURE);
-  const userId = decodedToken.userId;
+   const userId = req.user.userId;
 
   Sauce.findOne({ _id: req.params.id })
     .then(sauce => {
-
+      if (!sauce){
+        return res.status(404).json({message: "sauce non trouvé"});
+      }
        if (sauce.userId ==  userId) {
-
-  const sauceObject = req.file ?
+      const sauceObject = req.file ?
     {
       ...JSON.parse(req.body.sauce),
       imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
     } : { ...req.body };
   Sauce.updateOne({ _id: req.params.id }, { ...sauceObject, _id: req.params.id })
     .then(() => res.status(200).json({ message: 'Sauce modifié !'}))
-    .catch(error => res.status(400).json({ message: error.message }));
+    .catch(error => res.status(400).json(error));
   } else {
     return res.status(403).json({message: "not authorised"});
 }
 })
-.catch(error => res.status(500).json({ message: error.message }));
+.catch(error => res.status(500).json(error));
 };
 
 exports.deleteSauce = (req, res, next) => {
-  const token = req.headers.authorization.split(' ')[1];
-  const decodedToken = jwt.verify(token, process.env.SIGNATURE);
-  const userId = decodedToken.userId;
+  
+  const userId = req.user.userId;
 
   Sauce.findOne({ _id: req.params.id })
     .then(sauce => {
-
-       if (sauce.userId ==  userId) {
-        
-      
+      if (!sauce){
+        return res.status(404).json({message: "sauce non trouvé"});
+      }
+       if (sauce.userId ==  userId) {    
       const filename = sauce.imageUrl.split('/images/')[1];
       fs.unlink(`images/${filename}`, () => {
         Sauce.deleteOne({ _id: req.params.id })
           .then(() => res.status(200).json({ message: 'Sauce supprimé !'}))
-          .catch(error => res.status(400).json({ message: error.message  }));
+          .catch(error => res.status(400).json( error));
       });
     } else {
         return res.status(403).json({message: "not authorised"});
     }
     })
-    .catch(error => res.status(500).json({ message : error.message }));
+    .catch(error => res.status(500).json(error));
 };
-  
+ 
+
   exports.getOneSauce = (req, res, next) => {
     Sauce.findOne({ _id: req.params.id })
       .then(sauce => res.status(200).json(sauce))
-      .catch(error => res.status(400).json({message: error.message }));
+      .catch(error => res.status(400).json(error));
   }
 
   exports.getAllSauces = (req, res, next) => {
-    console.log(req.user.userId)
     Sauce.find()
       .then(sauces => res.status(200).json(sauces))
-      .catch(error => res.status(400).json({message: error.message  }));
+      .catch(error => res.status(400).json(error));
   }
 
   
@@ -124,7 +118,7 @@ exports.deleteSauce = (req, res, next) => {
           .then(() =>
             res.status(200).json({ message: "Compteurs de likes mis à jour !" })
           )
-          .catch((error) => res.status(400).json({ error }));
+          .catch((error) => res.status(400).json( error ));
       })
-      .catch((error) => res.status(400).json({ error }));
+      .catch((error) => res.status(400).json( error ));
   };
